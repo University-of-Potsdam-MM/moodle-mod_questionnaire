@@ -67,5 +67,80 @@
     /// Mark as viewed
     $completion=new completion_info($course);
     $completion->set_module_viewed($cm);
-    $questionnaire->view();
+	
+	// Klicker-Vote senden
+	// print_r($questionnaire);
+	// echo '<hr>';
+	// print_r($questionnaire->questions);
+	// echo '<hr>';
+	// print_r($_POST);
+	
+	// echo '<hr>';
+    $answerOutput = '';
+	foreach ( $questionnaire->questions as $questionid => $question ) {
+		foreach ( $question->choices as $cid => $choice ) {
+			// Multiple-Choice-Antwort
+			if (is_array ( $_POST ['q' . $questionid] )) {
+				$marker = 'false';
+				foreach ( $_POST ['q' . $questionid] as $id => $qid ) {
+					if ($cid == $qid) {
+						$marker = 'true';
+					}
+				}
+				$answerOutput .= "|" . $marker;
+			} 		
+			// Single-Choice-Antwort
+			else {
+				if ($cid == $_POST ['q' . $questionid]) {
+					$answerOutput .= "|true";
+				} else {
+					$answerOutput .= "|false";
+				}
+			}
+		}
+		if ($question->type_id == 1) {
+			if ('y' == $_POST ['q' . $questionid]) {
+				$answerOutput .= "|true";
+			} else {
+				if ('n' == $_POST ['q' . $questionid]) {
+					$answerOutput .= "|false";
+				}
+			}
+		}
+	}
+	require_once ('util.php');
+	require_once 'vote.php';
+	if ($_POST) {
+		// Klicker ID aus Datenbank abfrage
+		$klickerID = $DB->get_field ( 'questionnaire_survey', 'klickerid', array (
+				'id' => $sid 
+		) );
+		$client = new SoapClient ( $WSLocation );
+		$poll = $client->getPoll ( $klickerID );
+		// Vote an Klicker senden
+		$answers = array ();
+		$answers = explode ( '|', $answerOutput );
+		$aOutput = array ();
+		$givenAnswers = - 1;
+		foreach ( $answers as $key => $value ) {
+			if ($value != '') {
+				$givenAnswers = $givenAnswers + 1;
+				if ($value == 'true') {
+					$aOutput [$givenAnswers] = 1;
+				} else {
+					$aOutput [$givenAnswers] = 0;
+				}
+			}
+		}
+		
+		$vote = new Vote ();
+		$vote->PID = $klickerID;
+		$vote->values = $aOutput;
+		$result = $client->vote ( $vote );
+		// print "SENDE AN KLICKER: $answerOutput<br>KlickerID:".$klickerID;
+	}
+	
+	$questionnaire->view ();
+    
+    
 ?>

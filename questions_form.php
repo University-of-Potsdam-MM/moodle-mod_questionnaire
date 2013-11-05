@@ -27,7 +27,7 @@ class questionnaire_questions_form extends moodleform {
         $mform->addElement('html', '<div class="qcontainer">');
 
         //-------------------------------------------------------------------------------
-        $mform->addElement('header', 'questionhdr', get_string('questions', 'questionnaire'));
+        $mform->addElement('header', 'questionhdr', 'Frage');
         $mform->addHelpButton('questionhdr', 'questiontypes', 'questionnaire');
 
         $stredit = get_string('edit', 'questionnaire');
@@ -38,7 +38,7 @@ class questionnaire_questions_form extends moodleform {
         /// Set up question positions.
         if (!isset($questionnaire->questions)) {
             $questionnaire->questions = array();
-        }
+        }   
         $quespos = array();
         $max = count($questionnaire->questions);
         $sec = 0;
@@ -60,15 +60,82 @@ class questionnaire_questions_form extends moodleform {
         }
         natsort($qtypes);
         $addqgroup = array();
-        $addqgroup[] =& $mform->createElement('select', 'type_id', '', $qtypes);
-
-        // 'sticky' type_id value for further new questions
-        if (isset($SESSION->questionnaire->type_id)) {
-                $mform->setDefault('type_id', $SESSION->questionnaire->type_id);
+        
+       //print_r($questionnaire);
+        require_once('pollAS.php');
+        require_once('util.php');
+                
+        //Klicker: Nur eine Frage erlaubt
+        if(count($questionnaire->questions)<1) {
+        
+	        $addqgroup[] =& $mform->createElement('select', 'type_id', '', $qtypes);
+	        // 'sticky' type_id value for further new questions
+	        if (isset($SESSION->questionnaire->type_id)) {
+	                $mform->setDefault('type_id', $SESSION->questionnaire->type_id);
+	        }
+	
+	        $addqgroup[] =& $mform->createElement('submit', 'addqbutton', get_string('addselqtype', 'questionnaire'));
+	        $mform->addGroup($addqgroup, 'addqgroup', '', '', false);
+        
         }
+        //Struktur an Klicker schicken (Name, Frage, mögliche Antworten)
+        if($_POST) {
+        	//echo '<hr>';
+        	//print_r($_POST);
+        
+        	//echo '<h1>Submit Struktur to Klicker</h1>';
+        	 
+        	$klickerAnswers = array();
 
-        $addqgroup[] =& $mform->createElement('submit', 'addqbutton', get_string('addselqtype', 'questionnaire'));
-        $mform->addGroup($addqgroup, 'addqgroup', '', '', false);
+        	$name = $_POST['name'];
+        	$frage = $_POST['content']['text'];
+        	$frage = str_replace("\n", '', $frage);
+        	$frage = strip_tags(str_replace("\r", '', $frage));
+        	
+        	
+        	if ($_POST['type_id'] <> 1){ 
+	         	foreach(explode("\n", $_POST['allchoices']) as $choice) {
+	        		$klickerAnswers[] = $choice;
+	        	}
+	       	}
+        	else{//JA/Nein-Frage
+        		$c = -1;
+        		foreach(explode("/", $qtypes[1]) as $choice) {
+        			$c = $c + 1;
+        			$klickerAnswers[$c] = $choice;
+        		}
+        	}  	
+        	//Klicker-ID abfragen
+        	$klickerID = $DB->get_field('questionnaire_survey', 'klickerid', array('id' => $_POST['sid']));
+
+        	$erzeugen = 'update';
+        	if($klickerID) {
+        		echo 'Update';
+        	}
+        	else {
+        		echo 'Erzeugen';
+        		$erzeugen = 'erzeugen';
+        	}
+        	//Neue Frage an Klicker senden
+
+        	$client = new SoapClient($WSLocation);
+        	         	
+          	$poll = new PollAS();
+          	if ($erzeugen = 'update'){
+          		$poll->PID = $klickerID;
+          	}
+          	$poll->answer = $klickerAnswers;
+          	$poll->question = $frage;
+          	$result = $client->savePoll($poll);
+          	
+        	if ($erzeugen = 'erzeugen'){
+        		$DB->set_field('questionnaire_survey', 'klickerid', $result, array('id' => $_POST['sid']));
+        	}
+			$klickerID = $result;
+			if (! $client->isActivated ( $klickerID )) {
+				$result2 = $client->activatePoll ( $klickerID );
+			}
+		}
 
         $mform->addElement('html', '<div class="qheader">');
 
@@ -88,6 +155,7 @@ class questionnaire_questions_form extends moodleform {
         $mform->addElement('html', '</div>');
 
         $qnum = 0;
+                
         foreach ($questionnaire->questions as $question) {
 
             /// Skip displaying this question if we are moving this question.
@@ -219,6 +287,7 @@ class questionnaire_questions_form extends moodleform {
         $mform->addElement('hidden', 'id', 0);
         $mform->addElement('hidden', 'sid', 0);
         $mform->addElement('hidden', 'action', 'main');
+        
 
         //-------------------------------------------------------------------------------
         // buttons
@@ -302,6 +371,7 @@ class questionnaire_edit_question_form extends moodleform {
         }
 
         $mform    =& $this->_form;
+                
 
         //-------------------------------------------------------------------------------
         // display different messages for new question creation and existing question modification

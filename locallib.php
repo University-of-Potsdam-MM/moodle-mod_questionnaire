@@ -654,14 +654,17 @@ class questionnaire {
         echo '<div class="generalbox">';
 
     ?>
-    <form id="phpesp_response" method="post" action="<?php echo($action); ?>">
-    <div>
-    <input type="hidden" name="referer" value="<?php echo (!empty($formdata->referer) ? htmlspecialchars($formdata->referer) : ''); ?>" />
-    <input type="hidden" name="a" value="<?php echo($this->id); ?>" />
-    <input type="hidden" name="sid" value="<?php echo($this->survey->id); ?>" />
-    <input type="hidden" name="rid" value="<?php echo (isset($formdata->rid) ? $formdata->rid : '0'); ?>" />
-    <input type="hidden" name="sec" value="<?php echo($formdata->sec); ?>" />
-    </div>
+<form id="phpesp_response" method="post"
+	action="<?php echo($action); ?>">
+	<div>
+		<input type="hidden" name="referer"
+			value="<?php echo (!empty($formdata->referer) ? htmlspecialchars($formdata->referer) : ''); ?>" />
+		<input type="hidden" name="a" value="<?php echo($this->id); ?>" /> <input
+			type="hidden" name="sid" value="<?php echo($this->survey->id); ?>" />
+		<input type="hidden" name="rid"
+			value="<?php echo (isset($formdata->rid) ? $formdata->rid : '0'); ?>" />
+		<input type="hidden" name="sec" value="<?php echo($formdata->sec); ?>" />
+	</div>
     <?php
         if (isset($this->questions) && $num_sections) { // sanity check
             $this->survey_render($formdata->sec, $msg, $formdata);
@@ -1953,12 +1956,13 @@ class questionnaire {
     window.location="<?php echo($thank_url); ?>"
     //-->
     </script>
-    <noscript>
-    <h2 class="thankhead">Thank You for completing this survey.</h2>
-    <blockquote class="thankbody">Please click
-    <a href="<?php echo($thank_url); ?>">here</a>
-    to continue.</blockquote>
-    </noscript>
+	<noscript>
+		<h2 class="thankhead">Thank You for completing this survey.</h2>
+		<blockquote class="thankbody">
+			Please click <a href="<?php echo($thank_url); ?>">here</a> to
+			continue.
+		</blockquote>
+	</noscript>
     <?php
             exit;
         }
@@ -1982,9 +1986,10 @@ class questionnaire {
     ?>
     <div class="thankbody">
     <?php print_string('savedprogress', 'questionnaire', '<strong>'.get_string('resumesurvey', 'questionnaire').'</strong>'); ?>
-        <div><a href="<?php echo $url; ?>"><?php print_string('resumesurvey', 'questionnaire'); ?></a>
-        </div>
-    </div>
+        <div>
+			<a href="<?php echo $url; ?>"><?php print_string('resumesurvey', 'questionnaire'); ?></a>
+		</div>
+	</div>
 
     <?php
         global $CFG;
@@ -2151,9 +2156,10 @@ class questionnaire {
         choice ids for the given question id.
         Returns empty string on sucess, else returns an error
         string. */
-    function survey_results($precision = 1, $showTotals = 1, $qid = '', $cids = '', $rid = '', $guicross='', $uid=false, $groupid='', $sort='') {
+    function survey_results($precision = 1, $showTotals = 1, $qid = '', $cids = '', $rid = '', $guicross='', $uid=false, $groupid='', $sort='', $surveyid = -1) {
         global $CFG, $SESSION;
         global $DB;
+        require_once('util.php');
 
         $SESSION->questionnaire->noresponses = false;
         $bg = '';
@@ -2290,7 +2296,7 @@ class questionnaire {
                                GM.groupid=".$groupid." AND
                                ".$castsql."=GM.userid
                          ORDER BY R.id";
-            }
+            } 
             if (!($rows = $DB->get_records_sql($sql))) {
                 echo (get_string('noresponses','questionnaire'));
                 $SESSION->questionnaire->noresponses = true;
@@ -2339,7 +2345,7 @@ class questionnaire {
             echo("<blockquote>" ._('Cross analysis on QID:') ." ${qid}</blockquote>\n");
         }
     ?>
-    <table border="0" style="width:100%">
+    <table border="0" style="width: 100%">
     <?php
         $i=0; // question number counter
         foreach ($this->questions as $question) {
@@ -2406,17 +2412,104 @@ class questionnaire {
     // ---------------------------------------------------------------------------
     echo format_text(file_rewrite_pluginfile_urls($question->content, 'pluginfile.php', $question->context->id, 'mod_questionnaire',
                                                   'question', $question->id), FORMAT_HTML).'</div>'; // moved from $question->display_results
-    $question->display_results($rids, $guicross, $sort);
+
+    //$question->display_results($rids, $guicross, $sort);
+
+
+// statistik anzeigen
+
+
+			// fuer jede stimme eine zeile im ergenise
+			// format für jede stimmt: [id] => 16 [cid] => 13 [content] => Rot
+        	// daten in diesem format von klicker holen oder umwandeln oder eigene funktion schreiben
+        	
+        	//Klicker ID aus Datenbank abfrage
+			if (isset($SESSION->questionnaire_survey_id)) {
+				$sid = $SESSION->questionnaire_survey_id;
+			} else{
+				$sid = 0;
+			}
+	
+			//$sid = $SESSION->questionnaire_survey_id;
+			
+        	///Get all records where jon = 'doe' and bob is not = 'tom'
+        	///The 'select' parameter is (if not empty) is dropped directly into the WHERE clause without alteration.
+        	$table = 'questionnaire_survey';
+        	$select = 'klickerid >-1'; //is put into the where clause
+        	$result22 = $DB->get_records_select_menu($table,$select);
+        	        	
+        	$klickerID = $surveyid;
+
+        	$client = new SoapClient($WSLocation);
+        	$poll = $client->getPoll($klickerID); 
+        	$result = $client->getResult($klickerID);
+        	 
+        	$answers = array();
+        	$numberOfEntries = 0;
+         	foreach($result->item as $key => $value){       		
+				if ($numberOfEntries<count($poll->answer)){
+					$numberOfEntries = $numberOfEntries +1;
+					$answers[$key] = array('name' => $poll->answer[$key], 'count' => $value);
+ 	       			//$answers[0] = array('name' => 'green', 'count' => '7');
+				}
+			}
+			$yesno = false;
+			if (count($poll->answer) == 2){
+				if ($poll->answer[0] == 'Ja') {
+					if ($poll->answer [1] == 'Nein') {
+						$yesno = true;
+					}
+				}
+			}
+        	 
+			$total = 0;
+			foreach ($answers as $id => $data) {
+				$total += $data['count'];
+			}
+			if ($yesno == true){
+				$total = $answers[1]['count'];
+			}
+	
+			print "<table style='width:100%'>";
+			$countAnswers =0;
+			foreach ($answers as $id => $data) {
+				$countAnswers += 1;
+				if ($yesno == true) {
+					if ($countAnswers <= 1) {
+						$data ['percent'] = round ( ($answers[0]['count'] / $total) * 100 );
+						$this->print_row($data ['name'], $data ['percent'], $answers[0]['count']);
+					}else {
+						$data ['percent'] = round ( (($answers [1] ['count']-$answers [0] ['count']) / $total) * 100 );
+						$this->print_row($data ['name'], $data ['percent'], ($answers [1] ['count']-$answers [0] ['count']));
+					}
+						
+				} else {
+					$data ['percent'] = round ( ($data ['count'] / $total) * 100 );
+					$this->print_row($data ['name'], $data ['percent'],$data ['count']);
+				}
+			}
+			print "</table>";
 
     ?>
             </td>
-        </tr>
+		</tr>
     <?php } // end while ?>
     </table>
     <?php
         return;
     }
-
+	function print_row($name = '', $percent = 0, $count = 0) {
+		$pic1 = 'images/hbar_l.gif';
+		$pic2 = 'images/hbar.gif';
+		$pic3 = 'images/hbar_r.gif';
+		print '<tr class="r0">';
+		print '<td class="cell c0" style="text-align:left;width:*;">' . $name . '</td>';
+		print '<td class="cell c1" style="text-align:left;width:50%;white-space:nowrap;">&nbsp;<img alt="" src="' . $pic1 . '" height="9" width="4" /><img alt="" src="' . $pic2 . '" height="9" width="' . $percent . '%" /><img alt="" src="' . $pic3 . '" height="9" width="4" />&nbsp;' . $percent . '%</td>';
+		print '<td class="cell c2 lastcol" style="text-align:right;width:7%;">' . $count . '</td>';
+		print '</tr>';
+	}
+    
+    
 /* {{{ proto array survey_generate_csv(int survey_id)
     Exports the results of a survey to an array.
     */

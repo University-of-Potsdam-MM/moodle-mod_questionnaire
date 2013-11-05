@@ -109,6 +109,7 @@
     if (!($respsallparticipants = $DB->get_records_sql($sql))) {
         $respsallparticipants = array();
     }
+        
     $SESSION->questionnaire->numrespsallparticipants = count ($respsallparticipants);
     $SESSION->questionnaire->numselectedresps = $SESSION->questionnaire->numrespsallparticipants;
     $castsql = $DB->sql_cast_char2int('R.username');
@@ -290,6 +291,8 @@
         if (!($responses = $DB->get_records_select('questionnaire_response', $select, null, 'id', 'id'))) {
             return;
         }
+        
+        print_r($responses);
         foreach($responses as $rid=>$valeur) {
             break;
         }
@@ -615,7 +618,7 @@
     	$strsort = get_string('order_'.$sort, 'questionnaire');
         echo $strsort;
         echo $OUTPUT->help_icon('orderresponses','questionnaire');
-        $ret = $questionnaire->survey_results(1, 1, '', '', '', '', $uid=false, $currentgroupid, $sort);
+        $ret = $questionnaire->survey_results(1, 1, '', '', '', '', $uid=false, $currentgroupid, $sort, 0);
         echo '</div>';
 
     /// Finish the page

@@ -30,14 +30,18 @@ class mod_questionnaire_mod_form extends moodleform_mod {
         $this->add_intro_editor(true, get_string('summary', 'questionnaire'));
 
         //-------------------------------------------------------------------------------
+        
         $mform->addElement('header', 'timinghdr', get_string('timing', 'form'));
 
         $enableopengroup = array();
+        
+        
         $enableopengroup[] =& $mform->createElement('checkbox', 'useopendate', get_string('opendate', 'questionnaire'));
         $enableopengroup[] =& $mform->createElement('date_time_selector', 'opendate', '');
         $mform->addGroup($enableopengroup, 'enableopengroup', get_string('opendate', 'questionnaire'), ' ', false);
         $mform->addHelpButton('enableopengroup', 'opendate', 'questionnaire');
         $mform->disabledIf('enableopengroup', 'useopendate', 'notchecked');
+        
 
         $enableclosegroup = array();
         $enableclosegroup[] =& $mform->createElement('checkbox', 'useclosedate', get_string('closedate', 'questionnaire'));
@@ -45,6 +49,8 @@ class mod_questionnaire_mod_form extends moodleform_mod {
         $mform->addGroup($enableclosegroup, 'enableclosegroup', get_string('closedate', 'questionnaire'), ' ', false);
         $mform->addHelpButton('enableclosegroup', 'closedate', 'questionnaire');
         $mform->disabledIf('enableclosegroup', 'useclosedate', 'notchecked');
+        
+        
 
         //-------------------------------------------------------------------------------
         global $QUESTIONNAIRE_TYPES, $QUESTIONNAIRE_RESPONDENTS, $QUESTIONNAIRE_ELIGIBLES,
@@ -54,10 +60,8 @@ class mod_questionnaire_mod_form extends moodleform_mod {
         $mform->addElement('select', 'qtype', get_string('qtype', 'questionnaire'), $QUESTIONNAIRE_TYPES);
         $mform->addHelpButton('qtype', 'qtype', 'questionnaire');
         
-        $mform->addElement('hidden', 'cannotchangerespondenttype');
         $mform->addElement('select', 'respondenttype', get_string('respondenttype', 'questionnaire'), $QUESTIONNAIRE_RESPONDENTS);
         $mform->addHelpButton('respondenttype', 'respondenttype', 'questionnaire');
-        $mform->disabledIf('respondenttype', 'cannotchangerespondenttype', 'eq', 1);
         
         $mform->addElement('static', 'old_resp_eligible', get_string('respondenteligible', 'questionnaire'),
                            get_string('respeligiblerepl', 'questionnaire'));
@@ -110,6 +114,9 @@ class mod_questionnaire_mod_form extends moodleform_mod {
 
             $mform->setDefault('create', 'new-0');
         }
+        
+        
+        
 
         //-------------------------------------------------------------------------------
 // features definitions moved to lib.php, lines 39 & seq. by JR 21 JAN 2010
@@ -126,8 +133,7 @@ class mod_questionnaire_mod_form extends moodleform_mod {
     }
 
     function data_preprocessing(&$default_values){
-        global $DB;
-    	if (empty($default_values['opendate'])) {
+        if (empty($default_values['opendate'])) {
             $default_values['useopendate'] = 0;
         } else {
             $default_values['useopendate'] = 1;
@@ -137,15 +143,7 @@ class mod_questionnaire_mod_form extends moodleform_mod {
         } else {
             $default_values['useclosedate'] = 1;
         }
-        // prevent questionnaire set to "anonymous" to be reverted to "full name"
-        $default_values['cannotchangerespondenttype'] = 0;
-        if (!empty($default_values['respondenttype']) && $default_values['respondenttype'] == "anonymous") {
-            // if this questionnaire has responses
-        	$numresp = $DB->count_records('questionnaire_response', array('survey_id' => $default_values['sid'],'complete' => 'y'));
-            if ($numresp) {
-                $default_values['cannotchangerespondenttype'] = 1;              
-            }
-        }
+
     }
 
     function validation($data){

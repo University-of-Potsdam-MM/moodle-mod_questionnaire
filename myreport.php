@@ -1,7 +1,5 @@
 <?php  // $Id$
-
 /// This page shows results of a questionnaire to a student.
-
     require_once("../../config.php");
     require_once($CFG->dirroot.'/mod/questionnaire/lib.php');
 
@@ -86,7 +84,9 @@
 
         echo $OUTPUT->heading($titletext);
         echo '<div class = "generalbox">';
-        $questionnaire->survey_results(1, 1, '', '', $rids, '', $USER->id);
+
+        $klID = $questionnaire->survey->klickerid;
+        $questionnaire->survey_results(1, 1, '', '', $rids, '', $USER->id,'','',$klID);
         echo '</div>';
 
     /// Finish the page
